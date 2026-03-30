@@ -90,18 +90,37 @@ TEMPLATE=$(pveam available | grep "debian-12-standard" | tail -n 1 | awk '{print
 pveam download local "$TEMPLATE" >/dev/null
 
 # =========================
-# 🧱 CREAR LXC
+# 🧱 CREAR LXC (ANTI FALLOS)
 # =========================
-echo -e "${GREEN}🚀 Creando LXC con CTID $CTID...${NC}"
-pct create "$CTID" "local:vztmpl/$TEMPLATE" \
-  --hostname "$HOSTNAME" \
-  --password "$PASSWORD" \
-  --cores "$CORES" \
-  --memory "$RAM" \
-  --rootfs "local-zfs:$DISK" \
-  --net0 "name=eth0,bridge=$BRIDGE,ip=dhcp" \
-  --features nesting=1,keyctl=1 \
-  --unprivileged 0 >/dev/null
+echo -e "${GREEN}🚀 Creando LXC...${NC}"
+
+CREATED=false
+
+for i in $(seq 100 999); do
+  echo -e "${BLUE}🔄 Probando CTID: $i${NC}"
+
+  if pct create $i local:vztmpl/$TEMPLATE \
+    --hostname $HOSTNAME \
+    --password $PASSWORD \
+    --cores $CORES \
+    --memory $RAM \
+    --rootfs local-zfs:$DISK \
+    --net0 name=eth0,bridge=$BRIDGE,ip=dhcp \
+    --features nesting=1,keyctl=1 \
+    --unprivileged 0 >/dev/null 2>&1; then
+
+    CTID=$i
+    echo -e "${GREEN}🆔 LXC creado con CTID: $CTID${NC}"
+    CREATED=true
+    break
+  fi
+
+done
+
+if [ "$CREATED" = false ]; then
+  echo -e "${RED}❌ No se pudo crear ningún CTID libre${NC}"
+  exit 1
+fi
 
 # =========================
 # 🔌 TUN
