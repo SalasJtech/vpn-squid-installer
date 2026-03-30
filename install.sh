@@ -11,9 +11,23 @@ BLUE="\033[1;34m"
 NC="\033[0m"
 
 # =========================
+# 🔍 AUTO CTID
+# =========================
+if [ -z "$CTID" ]; then
+  for i in $(seq 100 999); do
+    if ! pct status $i &>/dev/null; then
+      CTID=$i
+      break
+    fi
+  done
+fi
+
+echo -e "${GREEN}🆔 Usando CTID: $CTID${NC}"
+
+# =========================
 # ⚙️ DEFAULTS
 # =========================
-CTID=110
+
 HOSTNAME="VPN-Gluetun"
 PASSWORD="246800"
 BRIDGE="vmbr0"
@@ -41,11 +55,6 @@ done
 # =========================
 if [ "$EUID" -ne 0 ]; then
   echo -e "${RED}❌ Ejecuta como root${NC}"
-  exit 1
-fi
-
-if pct status $CTID &>/dev/null; then
-  echo -e "${YELLOW}⚠️ El CT $CTID ya existe${NC}"
   exit 1
 fi
 
