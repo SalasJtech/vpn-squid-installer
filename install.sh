@@ -11,23 +11,9 @@ BLUE="\033[1;34m"
 NC="\033[0m"
 
 # =========================
-# 🔍 AUTO CTID
-# =========================
-if [ -z "$CTID" ]; then
-  for i in $(seq 100 999); do
-    if ! pct status $i &>/dev/null; then
-      CTID=$i
-      break
-    fi
-  done
-fi
-
-echo -e "${GREEN}🆔 Usando CTID: $CTID${NC}"
-
-# =========================
 # ⚙️ DEFAULTS
 # =========================
-
+CTID=""
 HOSTNAME="VPN-Gluetun"
 PASSWORD="246800"
 BRIDGE="vmbr0"
@@ -59,6 +45,31 @@ if [ "$EUID" -ne 0 ]; then
 fi
 
 # =========================
+# 🔍 AUTO CTID
+# =========================
+if [ -z "$CTID" ]; then
+  echo -e "${BLUE}🔍 Buscando CTID libre...${NC}"
+  for i in $(seq 100 999); do
+    if ! pct config "$i" &>/dev/null; then
+      CTID="$i"
+      echo -e "${GREEN}🆔 Usando CTID: $CTID${NC}"
+      break
+    fi
+  done
+else
+  if pct config "$CTID" &>/dev/null; then
+    echo -e "${RED}❌ El CTID $CTID ya está en uso${NC}"
+    exit 1
+  fi
+  echo -e "${GREEN}🆔 Usando CTID indicado: $CTID${NC}"
+fi
+
+if [ -z "$CTID" ]; then
+  echo -e "${RED}❌ No se encontró un CTID libre entre 100 y 999${NC}"
+  exit 1
+fi
+
+# =========================
 # 🚀 INICIO
 # =========================
 clear
@@ -76,19 +87,19 @@ sleep 1
 echo -e "${GREEN}📦 Descargando template...${NC}"
 pveam update >/dev/null
 TEMPLATE=$(pveam available | grep "debian-12-standard" | tail -n 1 | awk '{print $2}')
-pveam download local $TEMPLATE >/dev/null
+pveam download local "$TEMPLATE" >/dev/null
 
 # =========================
 # 🧱 CREAR LXC
 # =========================
-echo -e "${GREEN}🚀 Creando LXC...${NC}"
-pct create $CTID local:vztmpl/$TEMPLATE \
-  --hostname $HOSTNAME \
-  --password $PASSWORD \
-  --cores $CORES \
-  --memory $RAM \
-  --rootfs local-zfs:$DISK \
-  --net0 name=eth0,bridge=$BRIDGE,ip=dhcp \
+echo -e "${GREEN}🚀 Creando LXC con CTID $CTID...${NC}"
+pct create "$CTID" "local:vztmpl/$TEMPLATE" \
+  --hostname "$HOSTNAME" \
+  --password "$PASSWORD" \
+  --cores "$CORES" \
+  --memory "$RAM" \
+  --rootfs "local-zfs:$DISK" \
+  --net0 "name=eth0,bridge=$BRIDGE,ip=dhcp" \
   --features nesting=1,keyctl=1 \
   --unprivileged 0 >/dev/null
 
@@ -96,10 +107,10 @@ pct create $CTID local:vztmpl/$TEMPLATE \
 # 🔌 TUN
 # =========================
 echo -e "${GREEN}🔧 Activando TUN...${NC}"
-echo "lxc.cgroup2.devices.allow: c 10:200 rwm" >> /etc/pve/lxc/$CTID.conf
-echo "lxc.mount.entry: /dev/net/tun dev/net/tun none bind,create=file" >> /etc/pve/lxc/$CTID.conf
+echo "lxc.cgroup2.devices.allow: c 10:200 rwm" >> "/etc/pve/lxc/$CTID.conf"
+echo "lxc.mount.entry: /dev/net/tun dev/net/tun none bind,create=file" >> "/etc/pve/lxc/$CTID.conf"
 
-pct start $CTID
+pct start "$CTID"
 sleep 8
 
 # =========================
@@ -107,7 +118,7 @@ sleep 8
 # =========================
 echo -e "${GREEN}⚙️ Configurando contenedor...${NC}"
 
-pct exec $CTID -- bash -c "
+pct exec "$CTID" -- bash -c "
 apt update -qq
 apt install -y -qq curl gnupg ca-certificates python3 python3-venv python3-pip openssh-server git
 
@@ -132,12 +143,12 @@ systemctl start docker
 mkdir -p /opt/vpn-panel/templates
 
 # Descargar panel desde GitHub
-curl -sL $REPO/app.py -o /opt/vpn-panel/app.py
-curl -sL $REPO/index.html -o /opt/vpn-panel/templates/index.html
+curl -sL \"$REPO/app.py\" -o /opt/vpn-panel/app.py
+curl -sL \"$REPO/templates/index.html\" -o /opt/vpn-panel/templates/index.html
 
 # VENV
 python3 -m venv /opt/vpn-panel/venv
-source /opt/vpn-panel/venv/bin/activate
+. /opt/vpn-panel/venv/bin/activate
 pip install flask requests >/dev/null
 
 # SYSTEMD
@@ -155,7 +166,6 @@ Restart=always
 WantedBy=multi-user.target
 EOF
 
-systemctl daemon-reexec
 systemctl daemon-reload
 systemctl enable vpn-panel >/dev/null
 systemctl start vpn-panel
@@ -164,7 +174,7 @@ systemctl start vpn-panel
 # =========================
 # 🌐 IP FINAL
 # =========================
-IP=$(pct exec $CTID -- hostname -I | awk '{print $1}')
+IP=\$(pct exec "$CTID" -- hostname -I | awk '{print \$1}')
 
 # =========================
 # 🎉 FINAL
@@ -172,6 +182,7 @@ IP=$(pct exec $CTID -- hostname -I | awk '{print $1}')
 echo ""
 echo -e "${GREEN}🎉 INSTALACIÓN COMPLETA${NC}"
 echo "--------------------------------------"
+echo -e "🆔 CTID:  ${BLUE}$CTID${NC}"
 echo -e "🌐 Panel: ${BLUE}http://$IP:5000${NC}"
 echo -e "🔐 SSH:   ${BLUE}ssh root@$IP${NC}"
 echo -e "🔑 Pass:  ${YELLOW}$PASSWORD${NC}"
