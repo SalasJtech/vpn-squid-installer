@@ -45,22 +45,20 @@ if [ "$EUID" -ne 0 ]; then
 fi
 
 # =========================
-# 🔍 AUTO CTID CORRECTO
+# 🔍 AUTO CTID DEFINITIVO
 # =========================
 if [ -z "$CTID" ]; then
   echo -e "${BLUE}🔍 Buscando CTID libre...${NC}"
 
-  USED_IDS=$(pct list | awk 'NR>1 {print $1}')
-
   for i in $(seq 100 999); do
-    if ! echo "$USED_IDS" | grep -q "^$i$"; then
+    if [ ! -f "/etc/pve/lxc/$i.conf" ]; then
       CTID=$i
       echo -e "${GREEN}🆔 Usando CTID: $CTID${NC}"
       break
     fi
   done
 else
-  if pct list | awk 'NR>1 {print $1}' | grep -q "^$CTID$"; then
+  if [ -f "/etc/pve/lxc/$CTID.conf" ]; then
     echo -e "${RED}❌ El CTID $CTID ya está en uso${NC}"
     exit 1
   fi
