@@ -45,27 +45,29 @@ if [ "$EUID" -ne 0 ]; then
 fi
 
 # =========================
-# 🔍 AUTO CTID
+# 🔍 AUTO CTID CORRECTO
 # =========================
 if [ -z "$CTID" ]; then
   echo -e "${BLUE}🔍 Buscando CTID libre...${NC}"
+
+  USED_IDS=$(pct list | awk 'NR>1 {print $1}')
+
   for i in $(seq 100 999); do
-    if ! pct config "$i" &>/dev/null; then
-      CTID="$i"
+    if ! echo "$USED_IDS" | grep -q "^$i$"; then
+      CTID=$i
       echo -e "${GREEN}🆔 Usando CTID: $CTID${NC}"
       break
     fi
   done
 else
-  if pct config "$CTID" &>/dev/null; then
+  if pct list | awk 'NR>1 {print $1}' | grep -q "^$CTID$"; then
     echo -e "${RED}❌ El CTID $CTID ya está en uso${NC}"
     exit 1
   fi
-  echo -e "${GREEN}🆔 Usando CTID indicado: $CTID${NC}"
 fi
 
 if [ -z "$CTID" ]; then
-  echo -e "${RED}❌ No se encontró un CTID libre entre 100 y 999${NC}"
+  echo -e "${RED}❌ No se encontró CTID libre${NC}"
   exit 1
 fi
 
