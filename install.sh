@@ -11,33 +11,7 @@ BLUE="\033[1;34m"
 NC="\033[0m"
 
 # =========================
-# ⚙️ DEFAULTS
-# =========================
-CTID=""
-HOSTNAME="VPN-Gluetun"
-PASSWORD="246800"
-BRIDGE="vmbr0"
-RAM=1024
-CORES=2
-DISK=8
-
-REPO="https://raw.githubusercontent.com/SalasJtech/vpn-squid-installer/main"
-
-# =========================
-# 📥 ARGUMENTOS
-# =========================
-while [[ "$#" -gt 0 ]]; do
-  case $1 in
-    --ctid) CTID="$2"; shift ;;
-    --ram) RAM="$2"; shift ;;
-    --cores) CORES="$2"; shift ;;
-    --disk) DISK="$2"; shift ;;
-  esac
-  shift
-done
-
-# =========================
-# 🔍 VALIDACIONES
+# 🔐 VALIDAR ROOT
 # =========================
 if [ "$EUID" -ne 0 ]; then
   echo -e "${RED}❌ Ejecuta como root${NC}"
@@ -45,41 +19,34 @@ if [ "$EUID" -ne 0 ]; then
 fi
 
 # =========================
-# 🔍 AUTO CTID DEFINITIVO
+# 🧾 INPUT USUARIO
 # =========================
-if [ -z "$CTID" ]; then
-  echo -e "${BLUE}🔍 Buscando CTID libre...${NC}"
+echo -e "${BLUE}======================================"
+echo " 🚀 VPN PANEL INSTALLER (INTERACTIVO)"
+echo "======================================${NC}"
 
-  for i in $(seq 100 999); do
-    if [ ! -f "/etc/pve/lxc/$i.conf" ]; then
-      CTID=$i
-      echo -e "${GREEN}🆔 Usando CTID: $CTID${NC}"
-      break
-    fi
-  done
-else
-  if [ -f "/etc/pve/lxc/$CTID.conf" ]; then
-    echo -e "${RED}❌ El CTID $CTID ya está en uso${NC}"
-    exit 1
-  fi
-fi
+read -p "🆔 Ingresa CTID (ej: 101): " CTID
+read -p "💻 Hostname (ej: VPN-Gluetun): " HOSTNAME
+read -s -p "🔑 Password root: " PASSWORD
+echo ""
 
-if [ -z "$CTID" ]; then
-  echo -e "${RED}❌ No se encontró CTID libre${NC}"
+# =========================
+# ⚠️ VALIDAR CTID
+# =========================
+if [ -f "/etc/pve/lxc/$CTID.conf" ]; then
+  echo -e "${RED}❌ El CTID $CTID ya existe${NC}"
   exit 1
 fi
 
 # =========================
-# 🚀 INICIO
+# ⚙️ CONFIG
 # =========================
-clear
-echo -e "${BLUE}"
-echo "======================================"
-echo " 🚀 VPN PANEL INSTALLER (HELPER PRO)"
-echo "======================================"
-echo -e "${NC}"
+RAM=1024
+CORES=2
+DISK=8
+BRIDGE="vmbr0"
 
-sleep 1
+REPO="https://raw.githubusercontent.com/SalasJtech/vpn-squid-installer/main"
 
 # =========================
 # 📦 TEMPLATE
@@ -87,49 +54,30 @@ sleep 1
 echo -e "${GREEN}📦 Descargando template...${NC}"
 pveam update >/dev/null
 TEMPLATE=$(pveam available | grep "debian-12-standard" | tail -n 1 | awk '{print $2}')
-pveam download local "$TEMPLATE" >/dev/null
+pveam download local $TEMPLATE >/dev/null
 
 # =========================
-# 🧱 CREAR LXC (ANTI FALLOS)
+# 🚀 CREAR LXC
 # =========================
-echo -e "${GREEN}🚀 Creando LXC...${NC}"
-
-CREATED=false
-
-for i in $(seq 100 999); do
-  echo -e "${BLUE}🔄 Probando CTID: $i${NC}"
-
-  if pct create $i local:vztmpl/$TEMPLATE \
-    --hostname $HOSTNAME \
-    --password $PASSWORD \
-    --cores $CORES \
-    --memory $RAM \
-    --rootfs local-zfs:$DISK \
-    --net0 name=eth0,bridge=$BRIDGE,ip=dhcp \
-    --features nesting=1,keyctl=1 \
-    --unprivileged 0 >/dev/null 2>&1; then
-
-    CTID=$i
-    echo -e "${GREEN}🆔 LXC creado con CTID: $CTID${NC}"
-    CREATED=true
-    break
-  fi
-
-done
-
-if [ "$CREATED" = false ]; then
-  echo -e "${RED}❌ No se pudo crear ningún CTID libre${NC}"
-  exit 1
-fi
+echo -e "${GREEN}🚀 Creando LXC con CTID $CTID...${NC}"
+pct create $CTID local:vztmpl/$TEMPLATE \
+  --hostname $HOSTNAME \
+  --password $PASSWORD \
+  --cores $CORES \
+  --memory $RAM \
+  --rootfs local-zfs:$DISK \
+  --net0 name=eth0,bridge=$BRIDGE,ip=dhcp \
+  --features nesting=1,keyctl=1 \
+  --unprivileged 0
 
 # =========================
 # 🔌 TUN
 # =========================
 echo -e "${GREEN}🔧 Activando TUN...${NC}"
-echo "lxc.cgroup2.devices.allow: c 10:200 rwm" >> "/etc/pve/lxc/$CTID.conf"
-echo "lxc.mount.entry: /dev/net/tun dev/net/tun none bind,create=file" >> "/etc/pve/lxc/$CTID.conf"
+echo "lxc.cgroup2.devices.allow: c 10:200 rwm" >> /etc/pve/lxc/$CTID.conf
+echo "lxc.mount.entry: /dev/net/tun dev/net/tun none bind,create=file" >> /etc/pve/lxc/$CTID.conf
 
-pct start "$CTID"
+pct start $CTID
 sleep 8
 
 # =========================
@@ -137,17 +85,25 @@ sleep 8
 # =========================
 echo -e "${GREEN}⚙️ Configurando contenedor...${NC}"
 
-pct exec "$CTID" -- bash -c "
+pct exec $CTID -- bash -c "
 apt update -qq
+
+# LOCALES (fix warnings)
+apt install -y -qq locales
+sed -i 's/# en_US.UTF-8/en_US.UTF-8/' /etc/locale.gen
+locale-gen >/dev/null
+update-locale LANG=en_US.UTF-8
+
+# BASE + SSH
 apt install -y -qq curl gnupg ca-certificates python3 python3-venv python3-pip openssh-server git
 
-# SSH
+# SSH CONFIG
 sed -i 's/#PermitRootLogin prohibit-password/PermitRootLogin yes/' /etc/ssh/sshd_config
 sed -i 's/#PasswordAuthentication yes/PasswordAuthentication yes/' /etc/ssh/sshd_config
 systemctl enable ssh >/dev/null
 systemctl restart ssh
 
-# Docker
+# DOCKER
 install -m 0755 -d /etc/apt/keyrings
 curl -fsSL https://download.docker.com/linux/debian/gpg | gpg --dearmor -o /etc/apt/keyrings/docker.gpg
 
@@ -158,10 +114,9 @@ apt install -y -qq docker-ce docker-ce-cli containerd.io
 systemctl enable docker >/dev/null
 systemctl start docker
 
-# Carpetas
+# PANEL
 mkdir -p /opt/vpn-panel/templates
 
-# Descargar panel desde GitHub
 curl -sL \"$REPO/app.py\" -o /opt/vpn-panel/app.py
 curl -sL \"$REPO/templates/index.html\" -o /opt/vpn-panel/templates/index.html
 
@@ -170,7 +125,7 @@ python3 -m venv /opt/vpn-panel/venv
 . /opt/vpn-panel/venv/bin/activate
 pip install flask requests >/dev/null
 
-# SYSTEMD
+# SERVICE
 cat > /etc/systemd/system/vpn-panel.service <<EOF
 [Unit]
 Description=VPN Panel
@@ -193,7 +148,7 @@ systemctl start vpn-panel
 # =========================
 # 🌐 IP FINAL
 # =========================
-IP=\$(pct exec "$CTID" -- hostname -I | awk '{print \$1}')
+IP=$(pct exec $CTID -- sh -c "hostname -I | awk '{print \$1}'")
 
 # =========================
 # 🎉 FINAL
