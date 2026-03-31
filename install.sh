@@ -91,7 +91,10 @@ systemctl restart ssh
 install -m 0755 -d /etc/apt/keyrings
 curl -fsSL https://download.docker.com/linux/debian/gpg | gpg --dearmor -o /etc/apt/keyrings/docker.gpg
 
-echo "deb [arch=\$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/debian \$(. /etc/os-release && echo \$VERSION_CODENAME) stable" > /etc/apt/sources.list.d/docker.list
+ARCH=$(dpkg --print-architecture)
+CODENAME=$(grep VERSION_CODENAME /etc/os-release | cut -d= -f2)
+
+echo "deb [arch=$ARCH signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/debian $CODENAME stable" > /etc/apt/sources.list.d/docker.list
 
 apt update -qq
 apt install -y -qq docker-ce docker-ce-cli containerd.io
