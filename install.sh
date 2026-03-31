@@ -59,20 +59,15 @@ sleep 10
 echo "⚙️ Configurando LXC..."
 
 # ========= CONFIG LXC =========
-pct exec $CTID -- bash <<EOF
+pct exec $CTID -- bash <<'EOF'
 
-# ---------- LOCALE ----------
-apt update
+apt update -qq
+apt install -y -qq curl gnupg ca-certificates python3 python3-venv python3-pip openssh-server docker.io nginx
+
+# LOCALE FIX
 apt install -y locales
 sed -i 's/# en_US.UTF-8/en_US.UTF-8/' /etc/locale.gen
-locale-gen
-update-locale LANG=en_US.UTF-8
-
-export LANG=en_US.UTF-8
-export LC_ALL=en_US.UTF-8
-
-# ---------- BASE ----------
-apt install -y curl gnupg ca-certificates python3 python3-venv python3-pip
+locale-gen >/dev/null
 
 # ---------- SSH ----------
 apt install -y openssh-server
@@ -84,18 +79,6 @@ sed -i 's/#PasswordAuthentication yes/PasswordAuthentication yes/' /etc/ssh/sshd
 # Reiniciar y habilitar SSH
 systemctl enable ssh
 systemctl restart ssh
-
-# ---------- DOCKER ----------
-install -m 0755 -d /etc/apt/keyrings
-curl -fsSL https://download.docker.com/linux/debian/gpg | gpg --dearmor -o /etc/apt/keyrings/docker.gpg
-
-echo "deb [arch=\$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/debian \$(. /etc/os-release && echo \$VERSION_CODENAME) stable" > /etc/apt/sources.list.d/docker.list
-
-apt update
-apt install -y docker-ce docker-ce-cli containerd.io
-systemctl enable docker
-systemctl start docker
-
 
 # ========= VPN PROXY =========
 mkdir -p /opt/vpn-proxy
