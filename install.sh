@@ -32,9 +32,9 @@ REPO="https://raw.githubusercontent.com/SalasJtech/vpn-squid-installer/main"
 
 # ========= TEMPLATE =========
 echo "📦 Descargando template..."
-pveam update >/dev/null
-TEMPLATE=$(pveam available | grep debian-12 | tail -n 1 | awk '{print $2}')
-pveam download local $TEMPLATE >/dev/null
+pveam update
+TEMPLATE=$(pveam available | grep "debian-12-standard" | tail -n 1 | awk '{print $2}')
+pveam download $TEMPLATE_STORAGE $TEMPLATE
 
 # ========= CREAR LXC =========
 echo "🚀 Creando LXC..."
@@ -54,24 +54,48 @@ echo "lxc.cgroup2.devices.allow: c 10:200 rwm" >> /etc/pve/lxc/$CTID.conf
 echo "lxc.mount.entry: /dev/net/tun dev/net/tun none bind,create=file" >> /etc/pve/lxc/$CTID.conf
 
 pct start $CTID
-sleep 8
+sleep 10
+
+echo "⚙️ Configurando LXC..."
 
 # ========= CONFIG LXC =========
-pct exec $CTID -- bash <<'EOF'
+pct exec $CTID -- bash <<EOF
 
-apt update -qq
-apt install -y -qq curl gnupg ca-certificates python3 python3-venv python3-pip openssh-server docker.io nginx
-
-# LOCALE FIX
+# ---------- LOCALE ----------
+apt update
 apt install -y locales
 sed -i 's/# en_US.UTF-8/en_US.UTF-8/' /etc/locale.gen
-locale-gen >/dev/null
+locale-gen
+update-locale LANG=en_US.UTF-8
 
-# SSH
+export LANG=en_US.UTF-8
+export LC_ALL=en_US.UTF-8
+
+# ---------- BASE ----------
+apt install -y curl gnupg ca-certificates python3 python3-venv python3-pip
+
+# ---------- SSH ----------
+apt install -y openssh-server
+
+# Habilitar root login con contraseña
 sed -i 's/#PermitRootLogin prohibit-password/PermitRootLogin yes/' /etc/ssh/sshd_config
 sed -i 's/#PasswordAuthentication yes/PasswordAuthentication yes/' /etc/ssh/sshd_config
+
+# Reiniciar y habilitar SSH
 systemctl enable ssh
 systemctl restart ssh
+
+# ---------- DOCKER ----------
+install -m 0755 -d /etc/apt/keyrings
+curl -fsSL https://download.docker.com/linux/debian/gpg | gpg --dearmor -o /etc/apt/keyrings/docker.gpg
+
+echo "deb [arch=\$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/debian \$(. /etc/os-release && echo \$VERSION_CODENAME) stable" > /etc/apt/sources.list.d/docker.list
+
+apt update
+apt install -y docker-ce docker-ce-cli containerd.io
+systemctl enable docker
+systemctl start docker
+
 
 # ========= VPN PROXY =========
 mkdir -p /opt/vpn-proxy
