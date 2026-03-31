@@ -1,4 +1,4 @@
-# 🚀 VPN Squid Installer (Proxmox LXC)
+# 🚀 VPN Proxy Manager (Proxmox LXC)
 
 Instalador automático de un contenedor LXC en Proxmox con:
 
