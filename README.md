@@ -151,6 +151,215 @@ journalctl -u vpn-proxy -f
 
 ---
 
+## 🌐 Configuración de red (Router, Windows y Móvil)
+
+Para usar el proxy automáticamente en toda tu red, puedes configurar **WPAD / PAC** o hacerlo manualmente por dispositivo.
+
+---
+
+# 🧠 ¿Qué es PAC / WPAD?
+
+* 📄 **PAC (Proxy Auto Config):** archivo que indica cuándo usar proxy
+* 🌐 **WPAD:** permite que los dispositivos lo detecten automáticamente
+
+Tu PAC está disponible en:
+
+```text
+http://IP:8080/proxy.pac
+```
+
+---
+
+# 🌐 🔧 OPCIÓN 1: CONFIGURAR EN EL ROUTER (RECOMENDADO)
+
+Esto permite que **todos los dispositivos de tu red usen el proxy automáticamente**.
+
+## 📡 Método 1: DHCP (WPAD)
+
+En tu router (o servidor DHCP):
+
+1. Busca:
+
+   * DHCP Options
+   * Advanced DHCP
+
+2. Agrega:
+
+```text
+Option 252 → http://IP:8080/proxy.pac
+```
+
+💥 Resultado:
+
+* PCs y algunos móviles detectan el proxy automáticamente
+
+---
+
+## 🌍 Método 2: DNS (WPAD)
+
+Crea un registro DNS:
+
+```text
+wpad → IP_DEL_SERVIDOR
+```
+
+Y asegúrate que el PAC esté disponible en:
+
+```text
+http://wpad/wpad.dat
+```
+
+💡 Puedes copiar tu PAC a:
+
+```text
+/opt/vpn-proxy/proxy.pac → /var/www/html/wpad.dat
+```
+
+---
+
+# 💻 🪟 WINDOWS
+
+## 🔹 Automático (WPAD)
+
+1. Configuración → Red e Internet
+2. Proxy
+3. Activar:
+
+```text
+✔ Detectar configuración automáticamente
+```
+
+---
+
+## 🔹 Manual (PAC)
+
+1. Configuración → Red → Proxy
+2. Activar:
+
+```text
+✔ Usar script de configuración
+```
+
+3. URL:
+
+```text
+http://IP:8080/proxy.pac
+```
+
+---
+
+## 🔹 Manual (Proxy directo)
+
+```text
+IP:  IP_DEL_SERVIDOR
+PORT: 3128
+```
+
+---
+
+# 📱 ANDROID
+
+## 🔹 WiFi → Editar red
+
+1. Mantén presionada tu red WiFi
+2. Modificar red
+3. Opciones avanzadas
+
+---
+
+### ✔ PAC:
+
+```text
+Proxy → Auto
+PAC URL → http://IP:8080/proxy.pac
+```
+
+---
+
+### ✔ Manual:
+
+```text
+Proxy → Manual
+Host → IP
+Puerto → 3128
+```
+
+---
+
+# 🍎 iPhone (iOS)
+
+1. Ajustes → WiFi
+2. Selecciona tu red
+3. Configurar proxy
+
+---
+
+### ✔ PAC:
+
+```text
+Automático → http://IP:8080/proxy.pac
+```
+
+---
+
+### ✔ Manual:
+
+```text
+Servidor → IP
+Puerto → 3128
+```
+
+---
+
+# 🧪 PRUEBA DE FUNCIONAMIENTO
+
+Después de configurar:
+
+1. Abre:
+
+```text
+https://ipinfo.io
+```
+
+2. Verifica que la IP sea la del VPN
+
+---
+
+# ⚠️ NOTAS IMPORTANTES
+
+* Algunos routers de ISP NO permiten opción 252
+* iPhone no soporta WPAD automático → usar PAC manual
+* Android sí soporta PAC en WiFi
+* Windows funciona perfecto con WPAD
+
+---
+
+# 🔥 RECOMENDACIÓN
+
+👉 Usa **DHCP Option 252 + PAC**
+
+Es:
+
+✔ automático
+✔ limpio
+✔ sin tocar cada dispositivo
+
+---
+
+# 🚀 TIP PRO
+
+Si quieres que funcione aún mejor:
+
+* Usa dominio interno:
+
+```text
+http://proxy.local/proxy.pac
+```
+
+* Configura DNS interno en tu router
+
+---
+
 ## 👨‍💻 Autor
 
 Proyecto desarrollado por **SalasJTech**
@@ -161,7 +370,3 @@ Proyecto desarrollado por **SalasJTech**
 
 Si te funciona, deja una estrella ⭐ en el repo 😉
 
-
-Luego de crear el lxc solo queda entrar a la interfaz web con la ip del lxc.  hhtp://IP_LXC:5000  y configurar VPN y PAC y ya dar al boton conectar de la vpn a usar.  
-Se debe configurar en el router el WPAD para que sirva el pac a las PC y Dispositivos de toda la red automaticamente.
-O tambien sin necesesidad de router se puede configurar proxy de manera manual en los dispositivos http://IP_LXC:8080/proxy.pac
