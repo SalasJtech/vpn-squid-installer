@@ -16,7 +16,7 @@ Instalador automático de un contenedor LXC en Proxmox con:
 Ejecuta en tu nodo Proxmox:
 
 ```bash
-bash <(curl -sL https://raw.githubusercontent.com/SalasJtech/vpn-squid-installer/main/install.sh)
+bash <(curl -sL https://raw.githubusercontent.com/SalasJtech/vpn-proxy-manager/main/install.sh)
 ```
 
 ---

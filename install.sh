@@ -17,7 +17,11 @@ BRIDGE="vmbr0"
 TEMPLATE_STORAGE="local"
 ROOTFS_STORAGE="local-zfs"
 
-REPO="https://raw.githubusercontent.com/SalasJtech/vpn-squid-installer/main"
+GITHUB_USER="SalasJtech"
+REPO_NAME="vpn-proxy-manager"
+BRANCH="main"
+
+REPO="https://raw.githubusercontent.com/$GITHUB_USER/$REPO_NAME/$BRANCH"
 
 # =========================
 # VALIDAR CTID
@@ -128,8 +132,8 @@ chmod +x run.sh
 # ---------- PANEL ----------
 mkdir -p /opt/vpn-panel/templates
 
-curl -sL https://raw.githubusercontent.com/SalasJtech/vpn-squid-installer/main/app.py -o /opt/vpn-panel/app.py
-curl -sL https://raw.githubusercontent.com/SalasJtech/vpn-squid-installer/main/templates/index.html -o /opt/vpn-panel/templates/index.html
+curl -sL $REPO/app.py -o /opt/vpn-panel/app.py
+curl -sL $REPO/templates/index.html -o /opt/vpn-panel/templates/index.html
 
 # ---------- VENV ----------
 python3 -m venv /opt/vpn-panel/venv
