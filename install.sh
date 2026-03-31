@@ -135,6 +135,9 @@ mkdir -p /opt/vpn-panel/templates
 curl -sL $REPO/app.py -o /opt/vpn-panel/app.py
 curl -sL $REPO/templates/index.html -o /opt/vpn-panel/templates/index.html
 
+mkdir -p /opt/vpn-panel/static
+curl -sL $REPO/static/favicon.png -o /opt/vpn-panel/static/favicon.png
+
 # ---------- VENV ----------
 python3 -m venv /opt/vpn-panel/venv
 source /opt/vpn-panel/venv/bin/activate

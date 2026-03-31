@@ -1,593 +1,592 @@
 <!doctype html>
 <html>
-  <head>
-    <title>VPN Panel</title>
 
-    <style>
-      body {
-        margin: 0;
-        font-family: Arial;
-        background: #0d1117;
-        color: #e6edf3;
-        display: flex;
+<head>
+  <title>VPN Proxy Manager</title>
+  <link rel="icon" href="/static/favicon.png" type="image/x-icon">
+
+  <style>
+    body {
+      margin: 0;
+      font-family: Arial;
+      background: #0d1117;
+      color: #e6edf3;
+      display: flex;
+    }
+
+    .sidebar {
+      width: 220px;
+      background: #161b22;
+      height: 100vh;
+      padding: 20px;
+    }
+
+    .sidebar button {
+      width: 100%;
+      margin: 5px 0;
+      padding: 10px;
+      background: #21262d;
+      border: none;
+      color: white;
+      border-radius: 6px;
+      cursor: pointer;
+    }
+
+    .sidebar button:hover {
+      background: #30363d;
+    }
+
+    .content {
+      flex: 1;
+      padding: 20px;
+    }
+
+    .box {
+      border: 1px solid #30363d;
+      padding: 20px;
+      border-radius: 10px;
+      margin-bottom: 20px;
+    }
+
+    .section {
+      display: none;
+    }
+
+    .active {
+      display: block;
+    }
+
+    /* VPN */
+    .vpn-item {
+      display: flex;
+      align-items: center;
+      gap: 15px;
+      margin: 12px 0;
+    }
+
+    .vpn-name {
+      min-width: 220px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .vpn-active {
+      color: #3fb950;
+      font-weight: bold;
+    }
+
+    .vpn-actions button {
+      margin: 0 3px;
+    }
+
+    /* PAC */
+    .grid-item {
+      display: grid;
+      grid-template-columns: 220px 300px 200px;
+      gap: 10px;
+      margin: 10px 0;
+    }
+
+    .inline-input {
+      display: flex;
+      gap: 5px;
+    }
+
+    button {
+      padding: 5px 8px;
+      border-radius: 6px;
+      cursor: pointer;
+    }
+
+    input,
+    select {
+      padding: 5px;
+      border-radius: 6px;
+    }
+
+    .loader {
+      border: 3px solid #30363d;
+      border-top: 3px solid #58a6ff;
+      border-radius: 50%;
+      width: 14px;
+      height: 14px;
+      animation: spin 1s linear infinite;
+      display: inline-block;
+    }
+
+    .form-row {
+      display: grid;
+      grid-template-columns: 140px 1fr;
+      align-items: center;
+      margin-bottom: 10px;
+      gap: 10px;
+    }
+
+    .form-row label {
+      font-weight: bold;
+      color: #8b949e;
+    }
+
+    .form-row input {
+      width: 100%;
+    }
+
+    .form-row input {
+      width: 100%;
+      background: #0d1117;
+      border: 1px solid #30363d;
+      color: white;
+    }
+
+    .form-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 10px;
+      font-weight: bold;
+    }
+
+    .close-btn {
+      background: #30363d;
+      border: none;
+      color: white;
+      border-radius: 6px;
+      cursor: pointer;
+      padding: 5px 8px;
+    }
+
+    .close-btn:hover {
+      background: #f85149;
+    }
+
+    @keyframes spin {
+      0% {
+        transform: rotate(0deg);
       }
 
-      .sidebar {
-        width: 220px;
-        background: #161b22;
-        height: 100vh;
-        padding: 20px;
+      100% {
+        transform: rotate(360deg);
       }
+    }
+  </style>
+</head>
 
-      .sidebar button {
-        width: 100%;
-        margin: 5px 0;
-        padding: 10px;
-        background: #21262d;
-        border: none;
-        color: white;
-        border-radius: 6px;
-        cursor: pointer;
-      }
+<body>
+  <div class="sidebar">
+    <h2>🌐 VPN Panel</h2>
 
-      .sidebar button:hover {
-        background: #30363d;
-      }
+    <button onclick="showSection('dashboard')">🏠 Dashboard</button>
+    <button onclick="showSection('vpn')">🔘 VPN</button>
+    <button onclick="showSection('pac')">📡 PAC</button>
+    <button onclick="showSection('config')">⚙️ Config</button>
+  </div>
 
-      .content {
-        flex: 1;
-        padding: 20px;
-      }
+  <div class="content">
+    <div id="dashboard" class="section active">
+      <h2>📊 Dashboard</h2>
 
-      .box {
-        border: 1px solid #30363d;
-        padding: 20px;
-        border-radius: 10px;
-        margin-bottom: 20px;
-      }
+      <div class="box">
+        <p>🌐 IP: {{ public_ip }}</p>
+        <p>🔐 VPN IP: {{ vpn_ip }}</p>
 
-      .section {
-        display: none;
-      }
-      .active {
-        display: block;
-      }
+        <!-- 🔥 NECESARIO -->
+        <span id="vpn_ip_raw" style="display: none">{{ vpn_ip }}</span>
 
-      /* VPN */
-      .vpn-item {
-        display: flex;
-        align-items: center;
-        gap: 15px;
-        margin: 12px 0;
-      }
+        <p>{{ status }}</p>
 
-      .vpn-name {
-        min-width: 220px;
-        display: flex;
-        align-items: center;
-        gap: 8px;
-      }
+        <p id="vpn_name_display">Cargando...</p>
 
-      .vpn-active {
-        color: #3fb950;
-        font-weight: bold;
-      }
+        <!-- 🌐 LOCAL -->
+        <p id="local_country">🌐 Local: ...</p>
 
-      .vpn-actions button {
-        margin: 0 3px;
-      }
+        <!-- 🔐 VPN -->
+        <p id="vpn_country_vpn">🔐 VPN: ...</p>
 
-      /* PAC */
-      .grid-item {
-        display: grid;
-        grid-template-columns: 220px 300px 200px;
-        gap: 10px;
-        margin: 10px 0;
-      }
+        <hr />
 
-      .inline-input {
-        display: flex;
-        gap: 5px;
-      }
+        <p><b>📦 Contenedores:</b></p>
 
-      button {
-        padding: 5px 8px;
-        border-radius: 6px;
-        cursor: pointer;
-      }
-
-      input,
-      select {
-        padding: 5px;
-        border-radius: 6px;
-      }
-
-      .loader {
-        border: 3px solid #30363d;
-        border-top: 3px solid #58a6ff;
-        border-radius: 50%;
-        width: 14px;
-        height: 14px;
-        animation: spin 1s linear infinite;
-        display: inline-block;
-      }
-
-      .form-row {
-        display: grid;
-        grid-template-columns: 140px 1fr;
-        align-items: center;
-        margin-bottom: 10px;
-        gap: 10px;
-      }
-
-      .form-row label {
-        font-weight: bold;
-        color: #8b949e;
-      }
-
-      .form-row input {
-        width: 100%;
-      }
-
-      .form-row input {
-        width: 100%;
-        background: #0d1117;
-        border: 1px solid #30363d;
-        color: white;
-      }
-
-      .form-header {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        margin-bottom: 10px;
-        font-weight: bold;
-      }
-
-      .close-btn {
-        background: #30363d;
-        border: none;
-        color: white;
-        border-radius: 6px;
-        cursor: pointer;
-        padding: 5px 8px;
-      }
-
-      .close-btn:hover {
-        background: #f85149;
-      }
-
-      @keyframes spin {
-        0% {
-          transform: rotate(0deg);
-        }
-        100% {
-          transform: rotate(360deg);
-        }
-      }
-    </style>
-  </head>
-  <body>
-    <div class="sidebar">
-      <h2>🌐 VPN Panel</h2>
-
-      <button onclick="showSection('dashboard')">🏠 Dashboard</button>
-      <button onclick="showSection('vpn')">🔘 VPN</button>
-      <button onclick="showSection('pac')">📡 PAC</button>
-      <button onclick="showSection('config')">⚙️ Config</button>
+        {% for name, c in containers.items() %}
+        <p>
+          {% if c.state == "running" %} 🟢 {{ name }} -
+          <b style="color: #3fb950">{{ c.label }}</b> {% elif c.state ==
+          "stopped" %} 🔴 {{ name }} -
+          <b style="color: #f85149">{{ c.label }}</b> {% else %} ⚠️ {{ name }}
+          - <b>{{ c.label }}</b>
+          {% endif %}
+        </p>
+        {% endfor %}
+      </div>
     </div>
 
-    <div class="content">
-      <div id="dashboard" class="section active">
-        <h2>📊 Dashboard</h2>
-
-        <div class="box">
-          <p>🌐 IP: {{ public_ip }}</p>
-          <p>🔐 VPN IP: {{ vpn_ip }}</p>
-
-          <!-- 🔥 NECESARIO -->
-          <span id="vpn_ip_raw" style="display: none">{{ vpn_ip }}</span>
-
-          <p>{{ status }}</p>
-
-          <p id="vpn_name_display">Cargando...</p>
-
-          <!-- 🌐 LOCAL -->
-          <p id="local_country">🌐 Local: ...</p>
-
-          <!-- 🔐 VPN -->
-          <p id="vpn_country_vpn">🔐 VPN: ...</p>
-
-          <hr />
-
-          <p><b>📦 Contenedores:</b></p>
-
-          {% for name, c in containers.items() %}
-          <p>
-            {% if c.state == "running" %} 🟢 {{ name }} -
-            <b style="color: #3fb950">{{ c.label }}</b> {% elif c.state ==
-            "stopped" %} 🔴 {{ name }} -
-            <b style="color: #f85149">{{ c.label }}</b> {% else %} ⚠️ {{ name }}
-            - <b>{{ c.label }}</b>
-            {% endif %}
-          </p>
-          {% endfor %}
-        </div>
+    <div id="vpn" class="section">
+      <div style="display: flex; justify-content: space-between">
+        <h2>🔘 VPN</h2>
+        <button onclick="toggleVPNForm()">➕ Agregar VPN</button>
       </div>
 
-      <div id="vpn" class="section">
-        <div style="display: flex; justify-content: space-between">
-          <h2>🔘 VPN</h2>
-          <button onclick="toggleVPNForm()">➕ Agregar VPN</button>
+      <div id="vpnForm" style="display: none" class="box">
+        <div class="form-header">
+          <span>Configurar VPN</span>
+          <button class="close-btn" onclick="closeVPNForm()">✖</button>
         </div>
 
-        <div id="vpnForm" style="display: none" class="box">
-          <div class="form-header">
-            <span>Configurar VPN</span>
-            <button class="close-btn" onclick="closeVPNForm()">✖</button>
-          </div>
+        <input id="vpn_id" type="hidden" />
 
-          <input id="vpn_id" type="hidden" />
-
-          <div class="form-row">
-            <label>Nombre</label>
-            <input id="display" />
-          </div>
-
-          <div class="form-row">
-            <label>Private Key</label>
-            <input id="private" />
-          </div>
-
-          <div class="form-row">
-            <label>Address</label>
-            <input id="address" />
-          </div>
-
-          <div class="form-row">
-            <label>Public Key</label>
-            <input id="public" />
-          </div>
-
-          <div class="form-row">
-            <label>Endpoint</label>
-            <input id="endpoint" />
-          </div>
-
-          <button onclick="saveVPN()">💾 Guardar</button>
+        <div class="form-row">
+          <label>Nombre</label>
+          <input id="display" />
         </div>
 
-        <!-- prettier-ignore -->
-        <div class="box">
+        <div class="form-row">
+          <label>Private Key</label>
+          <input id="private" />
+        </div>
+
+        <div class="form-row">
+          <label>Address</label>
+          <input id="address" />
+        </div>
+
+        <div class="form-row">
+          <label>Public Key</label>
+          <input id="public" />
+        </div>
+
+        <div class="form-row">
+          <label>Endpoint</label>
+          <input id="endpoint" />
+        </div>
+
+        <button onclick="saveVPN()">💾 Guardar</button>
+      </div>
+
+      <div class="box">
         {% for key, vpn in vpns.items() %}
         <div class="vpn-item">
-            <div class="vpn-name">
+          <div class="vpn-name">
             {% if key == current %} 👉
             <span class="vpn-active">🟢 {{ vpn.name }}</span>
             {% else %} ⚪ {{ vpn.name }} {% endif %}
-            </div>
+          </div>
 
-            <div class="vpn-actions">
-            <button
-                onclick="connectVPN('{{key}}', this)"
-                {% if key == current %}disabled{% endif %}
-            >
-                ▶️
+          <div class="vpn-actions">
+            <button onclick="connectVPN('{{key}}', this)" {% if key==current %}disabled{% endif %}>
+              ▶️
             </button>
             <button onclick="editVPN('{{key}}')">✏️</button>
             <button onclick="deleteVPN('{{key}}')">🗑️</button>
-            </div>
+          </div>
         </div>
         {% endfor %}
-        </div>
-      </div>
-
-      <div id="pac" class="section">
-        <div style="display: flex; justify-content: space-between">
-          <h2>📡 PAC</h2>
-          <button onclick="toggleBlockForm()">➕ Agregar Bloque</button>
-        </div>
-
-        <div id="blockForm" style="display: none" class="box">
-          <div class="form-header">
-            <span>Nuevo Bloque</span>
-            <button class="close-btn" onclick="closeBlockForm()">✖</button>
-          </div>
-
-          <div class="form-row">
-            <label>Nombre</label>
-            <input id="new_block" placeholder="Nombre bloque" />
-          </div>
-
-          <button onclick="addBlock()">💾 Guardar</button>
-        </div>
-
-        <div class="box">
-          {% for block, domains in pac_data.items() %}
-          <div class="grid-item">
-            <div>📂 {{ block }}</div>
-
-            <div>
-              <select id="select_{{block}}" style="width: 100%">
-                {% for d in domains %}
-                <option>{{ d }}</option>
-                {% endfor %}
-              </select>
-            </div>
-
-            <div>
-              <button onclick="deleteDomain('{{block}}')">🗑️</button>
-              <button onclick="toggleDomainInput('{{block}}')">➕</button>
-              <button onclick="deleteBlock('{{block}}')">❌</button>
-            </div>
-          </div>
-
-          <div
-            id="input_{{block}}"
-            style="display: none; margin-left: 220px; margin-bottom: 10px"
-          >
-            <input id="domain_{{block}}" placeholder="nuevo dominio" />
-            <button onclick="saveDomain('{{block}}')">💾</button>
-          </div>
-
-          {% endfor %}
-        </div>
-      </div>
-
-      <div id="config" class="section">
-        <h2>⚙️ Configuración</h2>
-        <div class="box">Próximamente...</div>
       </div>
     </div>
 
-    <script>
+    <div id="pac" class="section">
+      <div style="display: flex; justify-content: space-between">
+        <h2>📡 PAC</h2>
+        <button onclick="toggleBlockForm()">➕ Agregar Bloque</button>
+      </div>
 
-      let currentSection = "dashboard";
-      let VPN_DATA = {{ vpns | tojson | safe }};
-      let CONNECT_TIME = localStorage.getItem("vpn_time") || null;
+      <div id="blockForm" style="display: none" class="box">
+        <div class="form-header">
+          <span>Nuevo Bloque</span>
+          <button class="close-btn" onclick="closeBlockForm()">✖</button>
+        </div>
 
-      window.onload = () => {
-          let saved = localStorage.getItem("section");
-          updateVPNName();
-          updateLocalCountry();
-          updateVPNCountry();
-          if(saved){
-              showSection(saved);
-          }
-      }
+        <div class="form-row">
+          <label>Nombre</label>
+          <input id="new_block" placeholder="Nombre bloque" />
+        </div>
 
-      function showSection(id){
-          currentSection = id;
-          localStorage.setItem("section", id);
+        <button onclick="addBlock()">💾 Guardar</button>
+      </div>
 
-          document.querySelectorAll(".section").forEach(s=>s.classList.remove("active"));
-          document.getElementById(id).classList.add("active");
-      }
+      <div class="box">
+        {% for block, domains in pac_data.items() %}
+        <div class="grid-item">
+          <div>📂 {{ block }}</div>
 
-      function updateVPNName(){
+          <div>
+            <select id="select_{{block}}" style="width: 100%">
+              {% for d in domains %}
+              <option>{{ d }}</option>
+              {% endfor %}
+            </select>
+          </div>
 
-          // 🔍 buscar la VPN activa en la lista
-          let active = document.querySelector(".vpn-active");
+          <div>
+            <button onclick="deleteDomain('{{block}}')">🗑️</button>
+            <button onclick="toggleDomainInput('{{block}}')">➕</button>
+            <button onclick="deleteBlock('{{block}}')">❌</button>
+          </div>
+        </div>
 
-          if(active){
-              let name = active.innerText.replace("🟢","").trim();
+        <div id="input_{{block}}" style="display: none; margin-left: 220px; margin-bottom: 10px">
+          <input id="domain_{{block}}" placeholder="nuevo dominio" />
+          <button onclick="saveDomain('{{block}}')">💾</button>
+        </div>
 
-              document.getElementById("vpn_name_display").innerText =
-                  "🔗 Usando VPN: " + name;
-          } else {
-              document.getElementById("vpn_name_display").innerText =
-                  "🔴 Sin VPN activa";
-          }
-      }
+        {% endfor %}
+      </div>
+    </div>
 
-      /* ================= SPA CORE ================= */
-      function api(url, data, section){
-          return fetch(url,{
-              method:"POST",
-              headers:{"Content-Type":"application/json"},
-              body:JSON.stringify(data)
-          })
-          .then(r => r.json())
-          .then(() => {
-              showSection(section);
-              refreshData();
-          });
-      }
+    <div id="config" class="section">
+      <h2>⚙️ Configuración</h2>
+      <div class="box">Próximamente...</div>
+    </div>
+  </div>
 
-      function refreshData(){
-          fetch(window.location.href)
-          .then(res => res.text())
-          .then(html => {
-              let parser = new DOMParser();
-              let doc = parser.parseFromString(html, "text/html");
+  <script>
 
-              // actualizar secciones
-              document.getElementById("vpn").innerHTML =
-                  doc.getElementById("vpn").innerHTML;
+    let currentSection = "dashboard";
+    let VPN_DATA = {{ vpns | tojson | safe }};
+    let CONNECT_TIME = localStorage.getItem("vpn_time") || null;
 
-              document.getElementById("pac").innerHTML =
-                  doc.getElementById("pac").innerHTML;
-
-              document.getElementById("dashboard").innerHTML =
-                  doc.getElementById("dashboard").innerHTML;
-
-              // 🔥 EXTRAER DATOS NUEVOS DE VPN
-              let scriptText = doc.querySelector("script").innerText;
-              let match = scriptText.match(/let VPN_DATA = (.*);/);
-
-              if(match){
-                  VPN_DATA = JSON.parse(match[1]);
-              }
-              updateVPNName();
-      	updateVPNCountry();
-      	updateLocalCountry();
-          });
-      }
-
-      /* ================= VPN ================= */
-      function connectVPN(key, btn){
-
-          let original = btn.innerHTML;
-          btn.innerHTML = '<span class="loader"></span>';
-          btn.disabled = true;
-
-          // guardar momento de conexión
-          CONNECT_TIME = Date.now();
-          localStorage.setItem("vpn_time", CONNECT_TIME);
-
-          api("/connect",{vpn:key},"vpn")
-          .then(()=>{
-              btn.innerHTML = original;
-              btn.disabled = false;
-
-              updateVPNName();
-          });
-      }
-
-      function updateLocalCountry(){
-          fetch("/geo")
-          .then(res => res.json())
-          .then(data => {
-
-              if(!data.success){
-                  throw new Error("API error");
-              }
-
-              let flag = data.country_code
-                  ? `https://flagcdn.com/24x18/${data.country_code.toLowerCase()}.png`
-                  : "";
-
-              document.getElementById("local_country").innerHTML =
-                  `🌐 Local: <img src="${flag}"> ${data.country} (${data.ip})`;
-          })
-          .catch(()=>{
-              document.getElementById("local_country").innerText =
-                  "🌐 Local: error";
-          });
-      }
-
-      function updateVPNCountry(){
-
-          let ip = document.getElementById("vpn_ip_raw")?.innerText.trim();
-
-          if(!ip || ip === "-" || ip === "None"){
-              document.getElementById("vpn_country_vpn").innerText =
-                  "🔐 VPN: no conectada";
-              return;
-          }
-
-          fetch(`/geo?ip=${ip}`)
-          .then(res => res.json())
-          .then(data => {
-
-              if(!data.success){
-                  throw new Error("API error");
-              }
-
-              let flag = data.country_code
-                  ? `https://flagcdn.com/24x18/${data.country_code.toLowerCase()}.png`
-                  : "";
-
-              document.getElementById("vpn_country_vpn").innerHTML =
-                  `🔐 VPN: <img src="${flag}"> ${data.country} (${ip})`;
-          })
-          .catch(()=>{
-              document.getElementById("vpn_country_vpn").innerText =
-                  "🔐 VPN: error";
-          });
-      }
-
-      function deleteVPN(key){
-          api("/delete",{vpn:key},"vpn");
-      }
-
-      function saveVPN(){
-          api("/save",{
-              id:vpn_id.value,
-              display:display.value,
-              private:private.value,
-              address:address.value,
-              public:public.value,
-              endpoint:endpoint.value
-          },"vpn");
-      }
-
-      function editVPN(key){
-          let v = VPN_DATA[key];
-
-          document.getElementById("vpnForm").style.display="block";
-
-          vpn_id.value = key;
-          display.value = v.name;
-          private.value = v.private_key;
-          address.value = v.address;
-          public.value = v.public_key;
-          endpoint.value = v.endpoint;
-      }
-
-      function toggleVPNForm(){
-          let f = document.getElementById("vpnForm");
-
-          if(f.style.display === "none"){
-              f.style.display = "block";
-
-              vpn_id.value = "";
-              display.value = "";
-              private.value = "";
-              address.value = "";
-              public.value = "";
-              endpoint.value = "";
-          } else {
-              f.style.display = "none";
-          }
-      }
-
-      /* ================= PAC ================= */
-      function toggleBlockForm(){
-          let f = document.getElementById("blockForm");
-          f.style.display = f.style.display==="none"?"block":"none";
-      }
-
-      function addBlock(){
-          api("/block/add",{name:new_block.value},"pac");
-      }
-
-      function deleteBlock(block){
-          api("/block/delete",{block:block},"pac");
-      }
-
-      function toggleDomainInput(block){
-          let el = document.getElementById("input_"+block);
-          el.style.display = el.style.display==="none" ? "block" : "none";
-      }
-
-      function saveDomain(block){
-          let val = document.getElementById("domain_"+block).value;
-          api("/domain/add",{block:block,domain:val},"pac");
-      }
-
-      function deleteDomain(block){
-          let select = document.getElementById("select_"+block);
-          let domain = select.value;
-          api("/domain/delete",{block:block,domain:domain},"pac");
-      }
-
-      function closeVPNForm(){
-          let f = document.getElementById("vpnForm");
-          f.style.display = "none";
-      }
-
-      function closeBlockForm(){
-          let f = document.getElementById("blockForm");
-          f.style.display = "none";
-
-          new_block.value = ""; // limpiar input
-      }
-
-      setInterval(() => {
+    window.onload = () => {
+      let saved = localStorage.getItem("section");
+      updateVPNName();
       updateLocalCountry();
       updateVPNCountry();
-      }, 30000);
-    </script>
-  </body>
+      if (saved) {
+        showSection(saved);
+      }
+    }
+
+    function showSection(id) {
+      currentSection = id;
+      localStorage.setItem("section", id);
+
+      document.querySelectorAll(".section").forEach(s => s.classList.remove("active"));
+      document.getElementById(id).classList.add("active");
+    }
+
+    function updateVPNName() {
+
+      // 🔍 buscar la VPN activa en la lista
+      let active = document.querySelector(".vpn-active");
+
+      if (active) {
+        let name = active.innerText.replace("🟢", "").trim();
+
+        document.getElementById("vpn_name_display").innerText =
+          "🔗 Usando VPN: " + name;
+      } else {
+        document.getElementById("vpn_name_display").innerText =
+          "🔴 Sin VPN activa";
+      }
+    }
+
+    /* ================= SPA CORE ================= */
+    function api(url, data, section) {
+      return fetch(url, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(data)
+      })
+        .then(r => r.json())
+        .then(() => {
+          showSection(section);
+          refreshData();
+        });
+    }
+
+    function refreshData() {
+      fetch(window.location.href)
+        .then(res => res.text())
+        .then(html => {
+          let parser = new DOMParser();
+          let doc = parser.parseFromString(html, "text/html");
+
+          // actualizar secciones
+          document.getElementById("vpn").innerHTML =
+            doc.getElementById("vpn").innerHTML;
+
+          document.getElementById("pac").innerHTML =
+            doc.getElementById("pac").innerHTML;
+
+          document.getElementById("dashboard").innerHTML =
+            doc.getElementById("dashboard").innerHTML;
+
+          // 🔥 EXTRAER DATOS NUEVOS DE VPN
+          let scriptText = doc.querySelector("script").innerText;
+          let match = scriptText.match(/let VPN_DATA = (.*);/);
+
+          if (match) {
+            VPN_DATA = JSON.parse(match[1]);
+          }
+          updateVPNName();
+          updateVPNCountry();
+          updateLocalCountry();
+        });
+    }
+
+    /* ================= VPN ================= */
+    function connectVPN(key, btn) {
+
+      let original = btn.innerHTML;
+      btn.innerHTML = '<span class="loader"></span>';
+      btn.disabled = true;
+
+      // guardar momento de conexión
+      CONNECT_TIME = Date.now();
+      localStorage.setItem("vpn_time", CONNECT_TIME);
+
+      api("/connect", { vpn: key }, "vpn")
+        .then(() => {
+          btn.innerHTML = original;
+          btn.disabled = false;
+
+          updateVPNName();
+        });
+    }
+
+    function updateLocalCountry() {
+      fetch("/geo")
+        .then(res => res.json())
+        .then(data => {
+
+          if (!data.success) {
+            throw new Error("API error");
+          }
+
+          let flag = data.country_code
+            ? `https://flagcdn.com/24x18/${data.country_code.toLowerCase()}.png`
+            : "";
+
+          document.getElementById("local_country").innerHTML =
+            `🌐 Local: <img src="${flag}"> ${data.country} (${data.ip})`;
+        })
+        .catch(() => {
+          document.getElementById("local_country").innerText =
+            "🌐 Local: error";
+        });
+    }
+
+    function updateVPNCountry() {
+
+      let ip = document.getElementById("vpn_ip_raw")?.innerText.trim();
+
+      if (!ip || ip === "-" || ip === "None") {
+        document.getElementById("vpn_country_vpn").innerText =
+          "🔐 VPN: no conectada";
+        return;
+      }
+
+      fetch(`/geo?ip=${ip}`)
+        .then(res => res.json())
+        .then(data => {
+
+          if (!data.success) {
+            throw new Error("API error");
+          }
+
+          let flag = data.country_code
+            ? `https://flagcdn.com/24x18/${data.country_code.toLowerCase()}.png`
+            : "";
+
+          document.getElementById("vpn_country_vpn").innerHTML =
+            `🔐 VPN: <img src="${flag}"> ${data.country} (${ip})`;
+        })
+        .catch(() => {
+          document.getElementById("vpn_country_vpn").innerText =
+            "🔐 VPN: error";
+        });
+    }
+
+    function deleteVPN(key) {
+      api("/delete", { vpn: key }, "vpn");
+    }
+
+    function saveVPN() {
+      api("/save", {
+        id: vpn_id.value,
+        display: display.value,
+        private: private.value,
+        address: address.value,
+        public: public.value,
+        endpoint: endpoint.value
+      }, "vpn");
+    }
+
+    function editVPN(key) {
+      let v = VPN_DATA[key];
+
+      document.getElementById("vpnForm").style.display = "block";
+
+      vpn_id.value = key;
+      display.value = v.name;
+      private.value = v.private_key;
+      address.value = v.address;
+      public.value = v.public_key;
+      endpoint.value = v.endpoint;
+    }
+
+    function toggleVPNForm() {
+      let f = document.getElementById("vpnForm");
+
+      if (f.style.display === "none") {
+        f.style.display = "block";
+
+        vpn_id.value = "";
+        display.value = "";
+        private.value = "";
+        address.value = "";
+        public.value = "";
+        endpoint.value = "";
+      } else {
+        f.style.display = "none";
+      }
+    }
+
+    /* ================= PAC ================= */
+    function toggleBlockForm() {
+      let f = document.getElementById("blockForm");
+      f.style.display = f.style.display === "none" ? "block" : "none";
+    }
+
+    function addBlock() {
+      api("/block/add", { name: new_block.value }, "pac");
+    }
+
+    function deleteBlock(block) {
+      api("/block/delete", { block: block }, "pac");
+    }
+
+    function toggleDomainInput(block) {
+      let el = document.getElementById("input_" + block);
+      el.style.display = el.style.display === "none" ? "block" : "none";
+    }
+
+    function saveDomain(block) {
+      let val = document.getElementById("domain_" + block).value;
+      api("/domain/add", { block: block, domain: val }, "pac");
+    }
+
+    function deleteDomain(block) {
+      let select = document.getElementById("select_" + block);
+      let domain = select.value;
+      api("/domain/delete", { block: block, domain: domain }, "pac");
+    }
+
+    function closeVPNForm() {
+      let f = document.getElementById("vpnForm");
+      f.style.display = "none";
+    }
+
+    function closeBlockForm() {
+      let f = document.getElementById("blockForm");
+      f.style.display = "none";
+
+      new_block.value = ""; // limpiar input
+    }
+
+    setInterval(() => {
+      updateLocalCountry();
+      updateVPNCountry();
+    }, 30000);
+  </script>
+</body>
+
 </html>
